@@ -1,0 +1,89 @@
+
+library(shiny)
+library(shinydashboard)
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+# ✅ Load dataset with correct encoding
+# ✅ Load dataset with correct encoding (handles special characters)
+road_safety <- read_csv("D:/INT 553(Data Cleaning)/12401502_Ayush_15/road_safety.csv", locale = locale(encoding = "Latin1"))
+
+# ✅ Convert all character columns to UTF-8
+road_safety <- road_safety %>%
+  mutate(across(where(is.character), ~ iconv(.x, from = "latin1", to = "UTF-8", sub = " ")))
+
+# UI
+ui <- dashboardPage(
+  dashboardHeader(title = "Road Safety Dashboard"),
+  dashboardSidebar(
+    selectInput("severity", "Select Casualty Severity:",
+                choices = unique(road_safety$`Casualty Severity`),
+                selected = "Slight"),
+    selectInput("gender", "Select Sex of Casualty:",
+                choices = unique(road_safety$`Sex of Casualty`),
+                selected = "Male")
+  ),
+  dashboardBody(
+    fluidRow(
+      box(title = "Accidents by Road Class", width = 6, status = "primary", solidHeader = TRUE,
+          plotOutput("plot_road_class")),
+      box(title = "Accidents by Weather Condition", width = 6, status = "warning", solidHeader = TRUE,
+          plotOutput("plot_weather"))
+    ),
+    fluidRow(
+      box(title = "Accidents by Lighting Conditions", width = 6, status = "info", solidHeader = TRUE,
+          plotOutput("plot_lighting")),
+      box(title = "Accidents by Vehicle Type", width = 6, status = "success", solidHeader = TRUE,
+          plotOutput("plot_vehicle"))
+    )
+  )
+)
+
+# Server
+server <- function(input, output) {
+  filtered_data <- reactive({
+    road_safety %>%
+      filter(`Casualty Severity` == input$severity,
+             `Sex of Casualty` == input$gender)
+  })
+  
+  output$plot_road_class <- renderPlot({
+    ggplot(filtered_data(), aes(x = `1st Road Class`)) +
+      geom_bar(fill = "#0073C2FF") +
+      labs(title = paste("Road Class -", input$severity, "-", input$gender),
+           x = "Road Class", y = "Count") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
+  
+  output$plot_weather <- renderPlot({
+    ggplot(filtered_data(), aes(x = `Weather Conditions`)) +
+      geom_bar(fill = "#D55E00") +
+      labs(title = paste("Weather Conditions -", input$severity, "-", input$gender),
+           x = "Weather", y = "Count") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
+  
+  output$plot_lighting <- renderPlot({
+    ggplot(filtered_data(), aes(x = `Lighting Conditions`)) +
+      geom_bar(fill = "#33A02C") +
+      labs(title = paste("Lighting -", input$severity, "-", input$gender),
+           x = "Lighting Conditions", y = "Count") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
+  
+  output$plot_vehicle <- renderPlot({
+    ggplot(filtered_data(), aes(x = `Type of Vehicle`)) +
+      geom_bar(fill = "#6A3D9A") +
+      labs(title = paste("Vehicle Type -", input$severity, "-", input$gender),
+           x = "Vehicle Type", y = "Count") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
+}
+
+# Run App
+shinyApp(ui, server)
